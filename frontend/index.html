@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ford Financial | Enterprise Bank Communication & Collections Platform</title>
+  <meta name="description" content="Enterprise-grade banking communication orchestration, collections case management, and transactional messaging platform.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-dark">
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-header">
+        <div class="brand-logo">
+          <div class="logo-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <div class="logo-text">
+            <span class="logo-title">FORD BANK</span>
+            <span class="logo-subtitle">Comm & Collections</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="nav-menu" aria-label="Main Navigation">
+        <button class="nav-item active" data-view="dashboard" id="nav-dashboard">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">Command Center</span>
+        </button>
+        <button class="nav-item" data-view="campaigns" id="nav-campaigns">
+          <span class="nav-icon">🚀</span>
+          <span class="nav-label">Campaigns</span>
+          <span class="badge" id="badge-active-campaigns">3</span>
+        </button>
+        <button class="nav-item" data-view="communication" id="nav-communication">
+          <span class="nav-icon">⚡</span>
+          <span class="nav-label">Message Jobs</span>
+          <span class="badge badge-warning" id="badge-pending-jobs">12</span>
+        </button>
+        <button class="nav-item" data-view="collections" id="nav-collections">
+          <span class="nav-icon">🛡️</span>
+          <span class="nav-label">Collections & Cases</span>
+        </button>
+        <button class="nav-item" data-view="customers" id="nav-customers">
+          <span class="nav-icon">👥</span>
+          <span class="nav-label">Customer Directory</span>
+        </button>
+        <button class="nav-item" data-view="audit" id="nav-audit">
+          <span class="nav-icon">📜</span>
+          <span class="nav-label">Compliance Audit</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="system-status">
+          <div class="status-indicator online"></div>
+          <div class="status-text">
+            <span class="status-title">Core Services Online</span>
+            <span class="status-detail">Kafka KRaft • Postgres 16</span>
+          </div>
+        </div>
+        <div class="auth-card">
+          <div class="user-avatar">JD</div>
+          <div class="user-meta">
+            <span class="user-name">John Doe</span>
+            <span class="user-role">ADMIN & MANAGER</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content" id="main-content">
+      <!-- Top Header Bar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-toggle" id="mobile-toggle" aria-label="Toggle menu">☰</button>
+          <div class="breadcrumb">
+            <span class="breadcrumb-root">Enterprise Banking</span>
+            <span class="breadcrumb-separator">/</span>
+            <span class="breadcrumb-current" id="breadcrumb-current">Command Center</span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div class="live-pill">
+            <span class="pulse-dot"></span>
+            <span>TRANSACTIONAL OUTBOX ACTIVE</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-api-token" title="Retrieve Dev JWT Token">
+            <span>🔑 Dev Token</span>
+          </button>
+          <button class="btn btn-primary btn-sm" id="btn-quick-job">
+            <span>+ Dispatch Job</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- View Containers -->
+      <div class="content-body">
+        
+        <!-- =================== VIEW: DASHBOARD =================== -->
+        <section class="view-panel active" id="view-dashboard">
+          <div class="dashboard-header">
+            <div>
+              <h1 class="page-title">Executive Command Center</h1>
+              <p class="page-subtitle">Real-time health, campaign delivery rates, collections recovery, and Kafka pipeline status.</p>
+            </div>
+            <div class="action-row">
+              <button class="btn btn-secondary" id="btn-refresh-dashboard">🔄 Refresh</button>
+              <button class="btn btn-primary" id="btn-create-campaign-modal">+ Create Campaign</button>
+            </div>
+          </div>
+
+          <!-- KPI Cards Grid -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-icon icon-blue">👥</div>
+              <div class="kpi-content">
+                <span class="kpi-label">Total Accounts</span>
+                <span class="kpi-value" id="kpi-total-customers">1,420</span>
+                <span class="kpi-trend positive">↑ 12% vs last month</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-icon icon-green">📡</div>
+              <div class="kpi-content">
+                <span class="kpi-label">Active Campaigns</span>
+                <span class="kpi-value" id="kpi-active-campaigns">4</span>
+                <span class="kpi-trend neutral">2 scheduled for today</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-icon icon-amber">⚡</div>
+              <div class="kpi-content">
+                <span class="kpi-label">Jobs Processed</span>
+                <span class="kpi-value" id="kpi-total-jobs">28,540</span>
+                <span class="kpi-trend positive">98.4% success rate</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-icon icon-purple">💰</div>
+              <div class="kpi-content">
+                <span class="kpi-label">Delinquent Book</span>
+                <span class="kpi-value" id="kpi-total-collections">₹ 14.8M</span>
+                <span class="kpi-trend positive">₹ 4.2M recovered this cycle</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Two Column Row -->
+          <div class="grid-2col">
+            <!-- Left: Active Campaigns Monitor -->
+            <div class="surface-card">
+              <div class="card-header">
+                <h2 class="card-title">Live Outreach Campaigns</h2>
+                <button class="link-btn" id="link-view-all-campaigns">View All →</button>
+              </div>
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Campaign Name</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      <th>Progress</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="table-dashboard-campaigns">
+                    <!-- Dynamic Rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Right: Real-time Outbox & Event Feed -->
+            <div class="surface-card">
+              <div class="card-header">
+                <h2 class="card-title">Kafka & Outbox Pipeline Activity</h2>
+                <span class="status-tag tag-success">SKIP LOCKED Poll: 5s</span>
+              </div>
+              <div class="event-feed" id="event-stream">
+                <!-- Live Event Stream Items -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================== VIEW: CAMPAIGNS =================== -->
+        <section class="view-panel" id="view-campaigns">
+          <div class="dashboard-header">
+            <div>
+              <h1 class="page-title">Campaign Orchestration</h1>
+              <p class="page-subtitle">Configure cohorts, enforce channel quotas, and manage state machine transitions.</p>
+            </div>
+            <button class="btn btn-primary" id="btn-new-campaign-page">+ New Campaign</button>
+          </div>
+
+          <div class="filters-bar">
+            <div class="filter-group">
+              <button class="filter-pill active" data-filter-status="ALL">All Campaigns</button>
+              <button class="filter-pill" data-filter-status="RUNNING">Running</button>
+              <button class="filter-pill" data-filter-status="SCHEDULED">Scheduled</button>
+              <button class="filter-pill" data-filter-status="DRAFT">Draft</button>
+              <button class="filter-pill" data-filter-status="COMPLETED">Completed</button>
+            </div>
+            <div class="search-box">
+              <input type="text" id="campaign-search-input" placeholder="Search campaign name..." class="input-field">
+            </div>
+          </div>
+
+          <div class="campaign-grid" id="campaign-cards-grid">
+            <!-- Dynamic Campaign Cards -->
+          </div>
+        </section>
+
+        <!-- =================== VIEW: COMMUNICATION =================== -->
+        <section class="view-panel" id="view-communication">
+          <div class="dashboard-header">
+            <div>
+              <h1 class="page-title">Communication Job Engine</h1>
+              <p class="page-subtitle">Asynchronous dispatch via Kafka with jittered backoff, provider timeouts, and replay protection.</p>
+            </div>
+            <div class="action-row">
+              <button class="btn btn-secondary" id="btn-open-webhook-simulator">📡 Simulated Webhook Callback</button>
+              <button class="btn btn-primary" id="btn-create-job-modal">+ Queue New Job</button>
+            </div>
+          </div>
+
+          <div class="surface-card">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Job ID / Idempotency Key</th>
+                    <th>Customer</th>
+                    <th>Channel</th>
+                    <th>Status</th>
+                    <th>Attempts</th>
+                    <th>Next Retry</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="table-communication-jobs">
+                  <!-- Dynamic Job Rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================== VIEW: COLLECTIONS =================== -->
+        <section class="view-panel" id="view-collections">
+          <div class="dashboard-header">
+            <div>
+              <h1 class="page-title">Collections & Agent Task Workqueue</h1>
+              <p class="page-subtitle">High-precision monetary recovery tracking (NUMERIC 19,4) and human-agent handoffs.</p>
+            </div>
+            <div class="action-row">
+              <button class="btn btn-secondary" id="btn-new-agent-task">+ Create Agent Task</button>
+              <button class="btn btn-primary" id="btn-new-case-modal">+ New Delinquency Case</button>
+            </div>
+          </div>
+
+          <div class="grid-2col">
+            <!-- Left: Active Collection Cases -->
+            <div class="surface-card">
+              <div class="card-header">
+                <h2 class="card-title">Delinquency Cases</h2>
+                <span class="badge" id="badge-total-cases">5 Open</span>
+              </div>
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Account Ref</th>
+                      <th>Outstanding</th>
+                      <th>Due Date</th>
+                      <th>Priority</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="table-collection-cases">
+                    <!-- Dynamic Case Rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Right: Agent Workqueue -->
+            <div class="surface-card">
+              <div class="card-header">
+                <h2 class="card-title">Human-Agent Task Workqueue</h2>
+                <span class="status-tag tag-warning">Assigned Queue</span>
+              </div>
+              <div class="tasks-list" id="agent-tasks-container">
+                <!-- Dynamic Agent Tasks -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================== VIEW: CUSTOMERS =================== -->
+        <section class="view-panel" id="view-customers">
+          <div class="dashboard-header">
+            <div>
+              <h1 class="page-title">Customer Directory & Contact Governance</h1>
+              <p class="page-subtitle">PII masking, channel opt-outs, and regulatory suppression list checks.</p>
+            </div>
+            <button class="btn btn-primary" id="btn-new-customer-modal">+ Add Customer</button>
+          </div>
+
+          <div class="surface-card">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Ref ID</th>
+                    <th>Customer Name</th>
+                    <th>Email</th>
+                    <th>Masked Phone</th>
+                    <th>Language</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="table-customers">
+                  <!-- Dynamic Customer Rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================== VIEW: AUDIT =================== -->
+        <section class="view-panel" id="view-audit">
+          <div class="dashboard-header">
+            <div>
+              <h1 class="page-title">Compliance Audit Trail</h1>
+              <p class="page-subtitle">Immutable compliance records for internal audit, RBI, and regulatory review.</p>
+            </div>
+            <span class="status-tag tag-success">🔒 Immutable Append-Only</span>
+          </div>
+
+          <div class="surface-card">
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp (UTC)</th>
+                    <th>Actor</th>
+                    <th>Action</th>
+                    <th>Entity</th>
+                    <th>Entity ID</th>
+                    <th>Outcome</th>
+                  </tr>
+                </thead>
+                <tbody id="table-audit-records">
+                  <!-- Dynamic Audit Rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- MODALS -->
+
+  <!-- Modal: Create Campaign -->
+  <div class="modal-backdrop" id="modal-campaign">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 class="modal-title">Create Communication Campaign</h3>
+        <button class="modal-close" data-close-modal="modal-campaign">&times;</button>
+      </div>
+      <form id="form-create-campaign">
+        <div class="form-group">
+          <label for="cmp-name">Campaign Name</label>
+          <input type="text" id="cmp-name" class="input-field" required placeholder="e.g. Q4 Auto Loan Overdue Alert">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="cmp-type">Campaign Type</label>
+            <select id="cmp-type" class="input-field">
+              <option value="PAYMENT_REMINDER">Payment Reminder</option>
+              <option value="COLLECTIONS_ALERT">Collections Alert</option>
+              <option value="ACCOUNT_NOTIFICATION">Account Notification</option>
+              <option value="PROMOTIONAL">Promotional</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="cmp-schedule">Scheduled Launch</label>
+            <input type="datetime-local" id="cmp-schedule" class="input-field">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="cmp-desc">Campaign Description</label>
+          <textarea id="cmp-desc" class="input-field" rows="3" placeholder="Target audience criteria and compliance rationale"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" data-close-modal="modal-campaign">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Campaign</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Simulated Webhook Callback -->
+  <div class="modal-backdrop" id="modal-webhook">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 class="modal-title">Simulate Telephony Provider Webhook Callback</h3>
+        <button class="modal-close" data-close-modal="modal-webhook">&times;</button>
+      </div>
+      <p class="modal-hint">Test provider asynchronous callbacks with nonce validation for replay attack prevention.</p>
+      <form id="form-webhook-simulate">
+        <div class="form-group">
+          <label for="wh-ref">Provider Reference</label>
+          <input type="text" id="wh-ref" class="input-field" required placeholder="e.g. SIM-VOICE-A1B2C3D4">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="wh-status">Status</label>
+            <select id="wh-status" class="input-field">
+              <option value="DELIVERED">DELIVERED (Success)</option>
+              <option value="FAILED">FAILED (Carrier error / Busy)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="wh-nonce">Cryptographic Nonce</label>
+            <input type="text" id="wh-nonce" class="input-field" required>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="btn-wh-regen-nonce">🎲 New Nonce</button>
+          <button type="submit" class="btn btn-primary">Fire Callback</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

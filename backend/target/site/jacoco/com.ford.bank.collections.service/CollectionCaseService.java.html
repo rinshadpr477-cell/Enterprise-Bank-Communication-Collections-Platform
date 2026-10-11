@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CollectionCaseService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Enterprise Bank Communication and Collections Platform</a> &gt; <a href="index.source.html" class="el_package">com.ford.bank.collections.service</a> &gt; <span class="el_source">CollectionCaseService.java</span></div><h1>CollectionCaseService.java</h1><pre class="source lang-java linenums">package com.ford.bank.collections.service;
+
+import com.ford.bank.collections.domain.CollectionCase;
+import com.ford.bank.collections.domain.CollectionCaseStatus;
+import com.ford.bank.collections.domain.Priority;
+import com.ford.bank.collections.dto.CollectionCaseResponse;
+import com.ford.bank.collections.dto.CreateCollectionCaseRequest;
+import com.ford.bank.collections.dto.UpdateCollectionCaseRequest;
+import com.ford.bank.collections.repository.CollectionCaseRepository;
+import com.ford.bank.common.dto.PageResponse;
+import com.ford.bank.common.exception.ResourceNotFoundException;
+import com.ford.bank.customer.repository.CustomerRepository;
+import com.ford.bank.kafka.outbox.OutboxService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+<span class="fc" id="L27">@Slf4j</span>
+@Service
+<span class="fc" id="L29">@RequiredArgsConstructor</span>
+public class CollectionCaseService {
+
+    private final CollectionCaseRepository collectionCaseRepository;
+    private final CustomerRepository customerRepository;
+    private final OutboxService outboxService;
+
+    @Transactional
+    public CollectionCaseResponse createCase(CreateCollectionCaseRequest request) {
+<span class="fc bfc" id="L38" title="All 2 branches covered.">        if (!customerRepository.existsById(request.customerId())) {</span>
+<span class="fc" id="L39">            throw new ResourceNotFoundException(&quot;Customer not found: &quot; + request.customerId());</span>
+        }
+
+<span class="fc" id="L42">        CollectionCase c = new CollectionCase();</span>
+<span class="fc" id="L43">        c.setCustomerId(request.customerId());</span>
+<span class="fc" id="L44">        c.setExternalAccountReference(request.externalAccountReference());</span>
+<span class="fc" id="L45">        c.setOutstandingAmount(request.outstandingAmount());</span>
+<span class="pc bpc" id="L46" title="1 of 2 branches missed.">        c.setCurrency(request.currency() != null ? request.currency() : &quot;INR&quot;);</span>
+<span class="fc" id="L47">        c.setDueDate(request.dueDate());</span>
+<span class="fc" id="L48">        c.setStatus(CollectionCaseStatus.OPEN);</span>
+<span class="pc bpc" id="L49" title="1 of 2 branches missed.">        c.setPriority(request.priority() != null ? request.priority() : Priority.MEDIUM);</span>
+<span class="fc" id="L50">        c.setNotes(request.notes());</span>
+
+<span class="fc" id="L52">        CollectionCase saved = collectionCaseRepository.save(c);</span>
+
+<span class="fc" id="L54">        Map&lt;String, Object&gt; payload = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L55">        payload.put(&quot;caseId&quot;, saved.getId().toString());</span>
+<span class="fc" id="L56">        payload.put(&quot;customerId&quot;, saved.getCustomerId().toString());</span>
+<span class="fc" id="L57">        payload.put(&quot;outstandingAmount&quot;, saved.getOutstandingAmount());</span>
+<span class="fc" id="L58">        payload.put(&quot;status&quot;, saved.getStatus().name());</span>
+
+<span class="fc" id="L60">        outboxService.publishEvent(&quot;CollectionCase&quot;, saved.getId().toString(), &quot;COLLECTION_CASE_CREATED&quot;, payload);</span>
+<span class="fc" id="L61">        log.info(&quot;Created collection case id={} customerId={}&quot;, saved.getId(), saved.getCustomerId());</span>
+<span class="fc" id="L62">        return CollectionCaseResponse.fromEntity(saved);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public CollectionCaseResponse getCase(UUID id) {
+<span class="nc" id="L67">        CollectionCase c = collectionCaseRepository.findById(id)</span>
+<span class="nc" id="L68">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;CollectionCase not found: &quot; + id));</span>
+<span class="nc" id="L69">        return CollectionCaseResponse.fromEntity(c);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;CollectionCaseResponse&gt; getCasesByCustomer(UUID customerId) {
+<span class="nc" id="L74">        return collectionCaseRepository.findByCustomerId(customerId).stream()</span>
+<span class="nc" id="L75">                .map(CollectionCaseResponse::fromEntity)</span>
+<span class="nc" id="L76">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse&lt;CollectionCaseResponse&gt; listCases(CollectionCaseStatus status, String agentId, Pageable pageable) {
+        Page&lt;CollectionCase&gt; page;
+<span class="nc bnc" id="L82" title="All 4 branches missed.">        if (status != null &amp;&amp; agentId != null) {</span>
+<span class="nc" id="L83">            page = collectionCaseRepository.findByAssignedAgentIdAndStatus(agentId, status, pageable);</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">        } else if (status != null) {</span>
+<span class="nc" id="L85">            page = collectionCaseRepository.findByStatus(status, pageable);</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">        } else if (agentId != null) {</span>
+<span class="nc" id="L87">            page = collectionCaseRepository.findByAssignedAgentId(agentId, pageable);</span>
+        } else {
+<span class="nc" id="L89">            page = collectionCaseRepository.findAll(pageable);</span>
+        }
+<span class="nc" id="L91">        return PageResponse.from(page.map(CollectionCaseResponse::fromEntity));</span>
+    }
+
+    @Transactional
+    public CollectionCaseResponse updateCase(UUID id, UpdateCollectionCaseRequest request) {
+<span class="fc" id="L96">        CollectionCase c = collectionCaseRepository.findById(id)</span>
+<span class="pc" id="L97">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;CollectionCase not found: &quot; + id));</span>
+
+<span class="fc" id="L99">        boolean statusChanged = false;</span>
+<span class="pc bpc" id="L100" title="2 of 4 branches missed.">        if (request.status() != null &amp;&amp; request.status() != c.getStatus()) {</span>
+<span class="fc" id="L101">            c.setStatus(request.status());</span>
+<span class="fc" id="L102">            statusChanged = true;</span>
+<span class="pc bpc" id="L103" title="3 of 4 branches missed.">            if (request.status() == CollectionCaseStatus.RESOLVED || request.status() == CollectionCaseStatus.WRITTEN_OFF) {</span>
+<span class="fc" id="L104">                c.setResolvedAt(OffsetDateTime.now());</span>
+            }
+        }
+<span class="pc bpc" id="L107" title="1 of 2 branches missed.">        if (request.assignedAgentId() != null) {</span>
+<span class="nc" id="L108">            c.setAssignedAgentId(request.assignedAgentId());</span>
+        }
+<span class="pc bpc" id="L110" title="1 of 2 branches missed.">        if (request.outstandingAmount() != null) {</span>
+<span class="fc" id="L111">            c.setOutstandingAmount(request.outstandingAmount());</span>
+        }
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">        if (request.priority() != null) {</span>
+<span class="nc" id="L114">            c.setPriority(request.priority());</span>
+        }
+<span class="pc bpc" id="L116" title="1 of 2 branches missed.">        if (request.notes() != null) {</span>
+<span class="fc" id="L117">            c.setNotes(request.notes());</span>
+        }
+
+<span class="fc" id="L120">        CollectionCase updated = collectionCaseRepository.save(c);</span>
+
+<span class="pc bpc" id="L122" title="1 of 2 branches missed.">        if (statusChanged) {</span>
+<span class="fc" id="L123">            Map&lt;String, Object&gt; payload = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L124">            payload.put(&quot;caseId&quot;, updated.getId().toString());</span>
+<span class="fc" id="L125">            payload.put(&quot;newStatus&quot;, updated.getStatus().name());</span>
+<span class="fc" id="L126">            payload.put(&quot;outstandingAmount&quot;, updated.getOutstandingAmount());</span>
+<span class="fc" id="L127">            outboxService.publishEvent(&quot;CollectionCase&quot;, updated.getId().toString(), &quot;COLLECTION_CASE_UPDATED&quot;, payload);</span>
+        }
+
+<span class="fc" id="L130">        return CollectionCaseResponse.fromEntity(updated);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

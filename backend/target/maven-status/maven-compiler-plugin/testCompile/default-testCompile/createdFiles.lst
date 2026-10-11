@@ -1,0 +1,4 @@
+com\ford\bank\customer\service\CustomerServiceTest.class
+com\ford\bank\communication\service\CommunicationJobServiceTest.class
+com\ford\bank\campaign\service\CampaignServiceTest.class
+com\ford\bank\collections\service\CollectionCaseServiceTest.class

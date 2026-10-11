@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CustomerResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Enterprise Bank Communication and Collections Platform</a> &gt; <a href="index.source.html" class="el_package">com.ford.bank.customer.dto</a> &gt; <span class="el_source">CustomerResponse.java</span></div><h1>CustomerResponse.java</h1><pre class="source lang-java linenums">package com.ford.bank.customer.dto;
+
+import com.ford.bank.customer.domain.CustomerStatus;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+/**
+ * API response for customer data.
+ * Phone numbers are partially masked (last 4 digits visible only).
+ * Full phone access requires elevated permissions checked at service layer.
+ */
+<span class="fc" id="L13">public record CustomerResponse(</span>
+        UUID id,
+        String customerReference,
+        String fullName,
+        String email,
+        String maskedPhoneNumber,
+        String preferredLanguage,
+        CustomerStatus status,
+        OffsetDateTime createdAt,
+        OffsetDateTime updatedAt
+) {}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

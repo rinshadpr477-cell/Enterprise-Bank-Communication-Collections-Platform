@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SuppressionEntry.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Enterprise Bank Communication and Collections Platform</a> &gt; <a href="index.source.html" class="el_package">com.ford.bank.customer.domain</a> &gt; <span class="el_source">SuppressionEntry.java</span></div><h1>SuppressionEntry.java</h1><pre class="source lang-java linenums">package com.ford.bank.customer.domain;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.UuidGenerator;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+/**
+ * Suppression entry prevents communication to a specific contact on a specific channel.
+ * normalizedContact stores the canonical form (lowercase email, E.164 phone, etc.)
+ * for reliable matching regardless of how the contact was originally stored.
+ */
+@Entity
+@Table(name = &quot;suppression_entries&quot;,
+       uniqueConstraints = @UniqueConstraint(name = &quot;uq_suppression&quot;, columnNames = {&quot;normalized_contact&quot;, &quot;channel&quot;}))
+@Getter
+<span class="nc" id="L21">@Setter</span>
+<span class="nc" id="L22">@NoArgsConstructor</span>
+public class SuppressionEntry {
+
+    @Id
+    @GeneratedValue
+    @UuidGenerator
+    @Column(name = &quot;id&quot;, updatable = false, nullable = false)
+<span class="nc" id="L29">    private UUID id;</span>
+
+    @Column(name = &quot;normalized_contact&quot;, nullable = false, length = 320)
+<span class="nc" id="L32">    private String normalizedContact;</span>
+
+    @Column(name = &quot;channel&quot;, nullable = false, length = 20)
+<span class="nc" id="L35">    private String channel;</span>
+
+    @Column(name = &quot;reason&quot;, nullable = false, length = 100)
+<span class="fc" id="L38">    private String reason;</span>
+
+    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
+<span class="nc" id="L41">    private OffsetDateTime createdAt;</span>
+
+    @Column(name = &quot;expires_at&quot;)
+<span class="nc" id="L44">    private OffsetDateTime expiresAt;</span>
+
+    @PrePersist
+    protected void onCreate() {
+<span class="nc" id="L48">        this.createdAt = OffsetDateTime.now();</span>
+<span class="nc" id="L49">    }</span>
+
+<span class="fc" id="L51">    public SuppressionEntry(String normalizedContact, String channel, String reason) {</span>
+<span class="fc" id="L52">        this.normalizedContact = normalizedContact;</span>
+<span class="fc" id="L53">        this.channel = channel;</span>
+<span class="fc" id="L54">        this.reason = reason;</span>
+<span class="fc" id="L55">    }</span>
+
+    public boolean isActive() {
+<span class="nc bnc" id="L58" title="All 4 branches missed.">        return expiresAt == null || expiresAt.isAfter(OffsetDateTime.now());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

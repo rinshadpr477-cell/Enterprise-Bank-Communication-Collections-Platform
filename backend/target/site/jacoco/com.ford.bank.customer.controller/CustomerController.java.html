@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CustomerController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Enterprise Bank Communication and Collections Platform</a> &gt; <a href="index.source.html" class="el_package">com.ford.bank.customer.controller</a> &gt; <span class="el_source">CustomerController.java</span></div><h1>CustomerController.java</h1><pre class="source lang-java linenums">package com.ford.bank.customer.controller;
+
+import com.ford.bank.common.dto.PageResponse;
+import com.ford.bank.customer.domain.CustomerStatus;
+import com.ford.bank.customer.dto.CreateCustomerRequest;
+import com.ford.bank.customer.dto.CustomerResponse;
+import com.ford.bank.customer.dto.UpdateCustomerRequest;
+import com.ford.bank.customer.service.CustomerService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.net.URI;
+import java.util.UUID;
+
+@Tag(name = &quot;Customers&quot;, description = &quot;Customer management endpoints&quot;)
+@RestController
+@RequestMapping(&quot;/api/v1/customers&quot;)
+<span class="nc" id="L29">@RequiredArgsConstructor</span>
+public class CustomerController {
+
+    private final CustomerService customerService;
+
+    @Operation(summary = &quot;Create a new customer&quot;)
+    @PostMapping
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER')&quot;)
+    public ResponseEntity&lt;CustomerResponse&gt; createCustomer(
+            @Valid @RequestBody CreateCustomerRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+
+<span class="nc" id="L41">        CustomerResponse response = customerService.createCustomer(request, extractActorId(jwt));</span>
+        URI location = ServletUriComponentsBuilder
+<span class="nc" id="L43">                .fromCurrentRequest()</span>
+<span class="nc" id="L44">                .path(&quot;/{id}&quot;)</span>
+<span class="nc" id="L45">                .buildAndExpand(response.id())</span>
+<span class="nc" id="L46">                .toUri();</span>
+<span class="nc" id="L47">        return ResponseEntity.created(location).body(response);</span>
+    }
+
+    @Operation(summary = &quot;Get customer by ID&quot;)
+    @GetMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER', 'COLLECTION_AGENT', 'AUDITOR')&quot;)
+    public ResponseEntity&lt;CustomerResponse&gt; getCustomer(@PathVariable UUID id) {
+<span class="nc" id="L54">        return ResponseEntity.ok(customerService.getCustomer(id));</span>
+    }
+
+    @Operation(summary = &quot;List customers with optional filtering and pagination&quot;)
+    @GetMapping
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER', 'COLLECTION_AGENT', 'AUDITOR')&quot;)
+    public ResponseEntity&lt;PageResponse&lt;CustomerResponse&gt;&gt; listCustomers(
+            @RequestParam(required = false) CustomerStatus status,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = &quot;0&quot;) int page,
+            @RequestParam(defaultValue = &quot;20&quot;) int size,
+            @RequestParam(defaultValue = &quot;createdAt&quot;) String sortBy,
+            @RequestParam(defaultValue = &quot;desc&quot;) String sortDir) {
+
+<span class="nc" id="L68">        size = Math.min(size, 100);</span>
+<span class="nc bnc" id="L69" title="All 2 branches missed.">        Sort.Direction direction = &quot;asc&quot;.equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;</span>
+<span class="nc" id="L70">        PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));</span>
+
+<span class="nc" id="L72">        Page&lt;CustomerResponse&gt; result = customerService.listCustomers(status, search, pageable);</span>
+<span class="nc" id="L73">        return ResponseEntity.ok(PageResponse.from(result));</span>
+    }
+
+    @Operation(summary = &quot;Partially update a customer&quot;)
+    @PatchMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER')&quot;)
+    public ResponseEntity&lt;CustomerResponse&gt; updateCustomer(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateCustomerRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+
+<span class="nc" id="L84">        return ResponseEntity.ok(customerService.updateCustomer(id, request, extractActorId(jwt)));</span>
+    }
+
+    private String extractActorId(Jwt jwt) {
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        return jwt != null ? jwt.getSubject() : &quot;system&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

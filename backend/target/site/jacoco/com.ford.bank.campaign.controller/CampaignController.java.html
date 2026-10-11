@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CampaignController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Enterprise Bank Communication and Collections Platform</a> &gt; <a href="index.source.html" class="el_package">com.ford.bank.campaign.controller</a> &gt; <span class="el_source">CampaignController.java</span></div><h1>CampaignController.java</h1><pre class="source lang-java linenums">package com.ford.bank.campaign.controller;
+
+import com.ford.bank.campaign.domain.CampaignStatus;
+import com.ford.bank.campaign.dto.CampaignResponse;
+import com.ford.bank.campaign.dto.CreateCampaignRequest;
+import com.ford.bank.campaign.service.CampaignService;
+import com.ford.bank.common.dto.PageResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.net.URI;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Tag(name = &quot;Campaigns&quot;, description = &quot;Campaign management and lifecycle control&quot;)
+@RestController
+@RequestMapping(&quot;/api/v1/campaigns&quot;)
+<span class="nc" id="L29">@RequiredArgsConstructor</span>
+public class CampaignController {
+
+    private final CampaignService campaignService;
+
+    @Operation(summary = &quot;Create a new campaign&quot;)
+    @PostMapping
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER')&quot;)
+    public ResponseEntity&lt;CampaignResponse&gt; createCampaign(
+            @Valid @RequestBody CreateCampaignRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+
+<span class="nc" id="L41">        CampaignResponse response = campaignService.createCampaign(request, extractActorId(jwt));</span>
+<span class="nc" id="L42">        URI location = ServletUriComponentsBuilder.fromCurrentRequest()</span>
+<span class="nc" id="L43">                .path(&quot;/{id}&quot;).buildAndExpand(response.id()).toUri();</span>
+<span class="nc" id="L44">        return ResponseEntity.created(location).body(response);</span>
+    }
+
+    @Operation(summary = &quot;Get campaign by ID&quot;)
+    @GetMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER', 'AUDITOR')&quot;)
+    public ResponseEntity&lt;CampaignResponse&gt; getCampaign(@PathVariable UUID id) {
+<span class="nc" id="L51">        return ResponseEntity.ok(campaignService.getCampaign(id));</span>
+    }
+
+    @Operation(summary = &quot;List campaigns with pagination&quot;)
+    @GetMapping
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER', 'AUDITOR')&quot;)
+    public ResponseEntity&lt;PageResponse&lt;CampaignResponse&gt;&gt; listCampaigns(
+            @RequestParam(required = false) CampaignStatus status,
+            @RequestParam(defaultValue = &quot;0&quot;) int page,
+            @RequestParam(defaultValue = &quot;20&quot;) int size) {
+
+<span class="nc" id="L62">        size = Math.min(size, 100);</span>
+<span class="nc" id="L63">        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, &quot;createdAt&quot;));</span>
+<span class="nc" id="L64">        return ResponseEntity.ok(PageResponse.from(campaignService.listCampaigns(status, pageable)));</span>
+    }
+
+    @Operation(summary = &quot;Schedule a campaign&quot;)
+    @PostMapping(&quot;/{id}/schedule&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER')&quot;)
+    public ResponseEntity&lt;CampaignResponse&gt; scheduleCampaign(
+            @PathVariable UUID id,
+            @RequestParam(required = false) OffsetDateTime scheduledAt,
+            @AuthenticationPrincipal Jwt jwt) {
+<span class="nc" id="L74">        return ResponseEntity.ok(campaignService.scheduleCampaign(id, scheduledAt, extractActorId(jwt)));</span>
+    }
+
+    @Operation(summary = &quot;Pause a running campaign&quot;)
+    @PostMapping(&quot;/{id}/pause&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER')&quot;)
+    public ResponseEntity&lt;CampaignResponse&gt; pauseCampaign(
+            @PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+<span class="nc" id="L82">        return ResponseEntity.ok(campaignService.pauseCampaign(id, extractActorId(jwt)));</span>
+    }
+
+    @Operation(summary = &quot;Resume a paused campaign&quot;)
+    @PostMapping(&quot;/{id}/resume&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER')&quot;)
+    public ResponseEntity&lt;CampaignResponse&gt; resumeCampaign(
+            @PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+<span class="nc" id="L90">        return ResponseEntity.ok(campaignService.resumeCampaign(id, extractActorId(jwt)));</span>
+    }
+
+    @Operation(summary = &quot;Cancel a campaign&quot;)
+    @PostMapping(&quot;/{id}/cancel&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER')&quot;)
+    public ResponseEntity&lt;CampaignResponse&gt; cancelCampaign(
+            @PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+<span class="nc" id="L98">        return ResponseEntity.ok(campaignService.cancelCampaign(id, extractActorId(jwt)));</span>
+    }
+
+    @Operation(summary = &quot;Add customer targets to a campaign (batch)&quot;)
+    @PostMapping(&quot;/{id}/targets&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER')&quot;)
+    public ResponseEntity&lt;Void&gt; addTargets(
+            @PathVariable UUID id,
+            @RequestBody List&lt;UUID&gt; customerIds,
+            @AuthenticationPrincipal Jwt jwt) {
+
+<span class="nc bnc" id="L109" title="All 4 branches missed.">        if (customerIds == null || customerIds.isEmpty()) {</span>
+<span class="nc" id="L110">            return ResponseEntity.badRequest().build();</span>
+        }
+<span class="nc" id="L112">        campaignService.addTargetsBatch(id, customerIds);</span>
+<span class="nc" id="L113">        return ResponseEntity.noContent().build();</span>
+    }
+
+    private String extractActorId(Jwt jwt) {
+<span class="nc bnc" id="L117" title="All 2 branches missed.">        return jwt != null ? jwt.getSubject() : &quot;system&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

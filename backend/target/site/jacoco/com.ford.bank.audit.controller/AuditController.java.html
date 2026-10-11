@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuditController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Enterprise Bank Communication and Collections Platform</a> &gt; <a href="index.source.html" class="el_package">com.ford.bank.audit.controller</a> &gt; <span class="el_source">AuditController.java</span></div><h1>AuditController.java</h1><pre class="source lang-java linenums">package com.ford.bank.audit.controller;
+
+import com.ford.bank.audit.dto.AuditRecordResponse;
+import com.ford.bank.audit.service.AuditService;
+import com.ford.bank.common.dto.PageResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+@Tag(name = &quot;Audit&quot;, description = &quot;Regulatory and operational audit trail endpoints&quot;)
+@RestController
+@RequestMapping(&quot;/api/v1/audit&quot;)
+<span class="nc" id="L18">@RequiredArgsConstructor</span>
+public class AuditController {
+
+    private final AuditService auditService;
+
+    @Operation(summary = &quot;List audit records with filtering and pagination&quot;)
+    @GetMapping
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'AUDITOR')&quot;)
+    public ResponseEntity&lt;PageResponse&lt;AuditRecordResponse&gt;&gt; listAuditRecords(
+            @RequestParam(required = false) String actorId,
+            @RequestParam(required = false) String entityType,
+            @RequestParam(required = false) String entityId,
+            @RequestParam(defaultValue = &quot;0&quot;) int page,
+            @RequestParam(defaultValue = &quot;20&quot;) int size,
+            @RequestParam(defaultValue = &quot;timestamp&quot;) String sortBy,
+            @RequestParam(defaultValue = &quot;desc&quot;) String sortDir) {
+
+<span class="nc" id="L35">        size = Math.min(size, 100);</span>
+<span class="nc bnc" id="L36" title="All 2 branches missed.">        Sort.Direction direction = &quot;asc&quot;.equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;</span>
+<span class="nc" id="L37">        PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));</span>
+
+<span class="nc" id="L39">        return ResponseEntity.ok(auditService.listAuditRecords(actorId, entityType, entityId, pageable));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

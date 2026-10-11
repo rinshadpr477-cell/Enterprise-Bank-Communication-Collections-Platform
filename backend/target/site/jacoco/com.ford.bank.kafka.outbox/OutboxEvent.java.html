@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OutboxEvent.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Enterprise Bank Communication and Collections Platform</a> &gt; <a href="index.source.html" class="el_package">com.ford.bank.kafka.outbox</a> &gt; <span class="el_source">OutboxEvent.java</span></div><h1>OutboxEvent.java</h1><pre class="source lang-java linenums">package com.ford.bank.kafka.outbox;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
+
+import java.time.OffsetDateTime;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * Outbox event record.
+ *
+ * Design notes on the crash window:
+ * After Kafka broker acknowledges the message, we update published_at.
+ * If the JVM crashes between Kafka ack and the DB update, the event will
+ * be republished on the next poll. Consumers MUST be idempotent via
+ * the processed_events table.
+ *
+ * Locking strategy:
+ * The publisher locks records by setting locked_by = instanceId and locked_at = now().
+ * If locked_at is older than lock_timeout, another instance can reclaim the record.
+ * Multiple publisher instances thus cannot claim the same record concurrently.
+ */
+@Entity
+@Table(name = &quot;outbox_events&quot;)
+@Getter
+<span class="nc" id="L32">@Setter</span>
+<span class="nc" id="L33">@NoArgsConstructor</span>
+public class OutboxEvent {
+
+    @Id
+    @GeneratedValue
+    @UuidGenerator
+    @Column(name = &quot;id&quot;, updatable = false, nullable = false)
+<span class="nc" id="L40">    private UUID id;</span>
+
+    @Column(name = &quot;aggregate_type&quot;, nullable = false, length = 100)
+<span class="nc" id="L43">    private String aggregateType;</span>
+
+    @Column(name = &quot;aggregate_id&quot;, nullable = false, length = 100)
+<span class="nc" id="L46">    private String aggregateId;</span>
+
+    @Column(name = &quot;event_type&quot;, nullable = false, length = 100)
+<span class="nc" id="L49">    private String eventType;</span>
+
+<span class="nc" id="L51">    @Column(name = &quot;schema_version&quot;, nullable = false)</span>
+<span class="nc" id="L52">    private int schemaVersion = 1;</span>
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = &quot;payload&quot;, nullable = false, columnDefinition = &quot;jsonb&quot;)
+<span class="nc" id="L56">    private Map&lt;String, Object&gt; payload;</span>
+
+    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
+<span class="nc" id="L59">    private OffsetDateTime createdAt;</span>
+
+    @Column(name = &quot;published_at&quot;)
+<span class="nc" id="L62">    private OffsetDateTime publishedAt;</span>
+
+<span class="nc" id="L64">    @Column(name = &quot;publish_attempts&quot;, nullable = false)</span>
+<span class="nc" id="L65">    private int publishAttempts = 0;</span>
+
+    @Column(name = &quot;locked_by&quot;, length = 100)
+<span class="nc" id="L68">    private String lockedBy;</span>
+
+    @Column(name = &quot;locked_at&quot;)
+<span class="nc" id="L71">    private OffsetDateTime lockedAt;</span>
+
+    @PrePersist
+    protected void onCreate() {
+<span class="nc" id="L75">        this.createdAt = OffsetDateTime.now();</span>
+<span class="nc" id="L76">    }</span>
+
+    public boolean isPublished() {
+<span class="nc bnc" id="L79" title="All 2 branches missed.">        return publishedAt != null;</span>
+    }
+
+    public void markPublished() {
+<span class="nc" id="L83">        this.publishedAt = OffsetDateTime.now();</span>
+<span class="nc" id="L84">        this.lockedBy = null;</span>
+<span class="nc" id="L85">        this.lockedAt = null;</span>
+<span class="nc" id="L86">    }</span>
+
+    public void incrementAttempts() {
+<span class="nc" id="L89">        this.publishAttempts++;</span>
+<span class="nc" id="L90">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

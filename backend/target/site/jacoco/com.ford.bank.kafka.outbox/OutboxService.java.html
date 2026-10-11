@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OutboxService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Enterprise Bank Communication and Collections Platform</a> &gt; <a href="index.source.html" class="el_package">com.ford.bank.kafka.outbox</a> &gt; <span class="el_source">OutboxService.java</span></div><h1>OutboxService.java</h1><pre class="source lang-java linenums">package com.ford.bank.kafka.outbox;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Map;
+
+/**
+ * Outbox service for publishing events transactionally.
+ *
+ * Usage: Call publishEvent() within the same database transaction as your
+ * business operation. Both the business change and the outbox record will
+ * be committed atomically. The OutboxPublisher scheduler will then send
+ * the event to Kafka and mark it as published.
+ */
+<span class="fc" id="L19">@Slf4j</span>
+@Service
+<span class="nc" id="L21">@RequiredArgsConstructor</span>
+public class OutboxService {
+
+    private final OutboxEventRepository outboxEventRepository;
+
+    /**
+     * Create an outbox record in the current transaction.
+     * MANDATORY propagation ensures this runs within the caller's transaction.
+     * If no transaction exists, an exception is thrown immediately.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void publishEvent(String aggregateType, String aggregateId,
+                              String eventType, Map&lt;String, Object&gt; payload) {
+<span class="nc" id="L34">        OutboxEvent event = new OutboxEvent();</span>
+<span class="nc" id="L35">        event.setAggregateType(aggregateType);</span>
+<span class="nc" id="L36">        event.setAggregateId(aggregateId);</span>
+<span class="nc" id="L37">        event.setEventType(eventType);</span>
+<span class="nc" id="L38">        event.setPayload(payload);</span>
+<span class="nc" id="L39">        outboxEventRepository.save(event);</span>
+<span class="nc" id="L40">        log.debug(&quot;Outbox event queued: type={} aggregateId={}&quot;, eventType, aggregateId);</span>
+<span class="nc" id="L41">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

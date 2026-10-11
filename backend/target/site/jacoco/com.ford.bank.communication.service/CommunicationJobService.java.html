@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CommunicationJobService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Enterprise Bank Communication and Collections Platform</a> &gt; <a href="index.source.html" class="el_package">com.ford.bank.communication.service</a> &gt; <span class="el_source">CommunicationJobService.java</span></div><h1>CommunicationJobService.java</h1><pre class="source lang-java linenums">package com.ford.bank.communication.service;
+
+import com.ford.bank.common.dto.PageResponse;
+import com.ford.bank.common.exception.ConflictException;
+import com.ford.bank.common.exception.ResourceNotFoundException;
+import com.ford.bank.communication.domain.*;
+import com.ford.bank.communication.dto.*;
+import com.ford.bank.communication.repository.CommunicationAttemptRepository;
+import com.ford.bank.communication.repository.CommunicationJobRepository;
+import com.ford.bank.communication.repository.WebhookNonceRepository;
+import com.ford.bank.customer.domain.CommunicationChannel;
+import com.ford.bank.customer.domain.Customer;
+import com.ford.bank.customer.repository.CustomerRepository;
+import com.ford.bank.customer.repository.SuppressionRepository;
+import com.ford.bank.kafka.outbox.OutboxService;
+import com.ford.bank.provider.sms.SmsProvider;
+import com.ford.bank.provider.sms.SmsProviderResult;
+import com.ford.bank.provider.sms.SmsRequest;
+import com.ford.bank.provider.voice.VoiceCallRequest;
+import com.ford.bank.provider.voice.VoiceProvider;
+import com.ford.bank.provider.voice.VoiceProviderResult;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+<span class="fc" id="L35">@Slf4j</span>
+@Service
+<span class="fc" id="L37">@RequiredArgsConstructor</span>
+public class CommunicationJobService {
+
+    private final CommunicationJobRepository jobRepository;
+    private final CommunicationAttemptRepository attemptRepository;
+    private final CustomerRepository customerRepository;
+    private final SuppressionRepository suppressionRepository;
+    private final WebhookNonceRepository webhookNonceRepository;
+    private final OutboxService outboxService;
+    private final VoiceProvider voiceProvider;
+    private final SmsProvider smsProvider;
+
+    @Transactional
+    public CommunicationJobResponse createJob(CreateCommunicationJobRequest request) {
+<span class="nc" id="L51">        Customer customer = customerRepository.findById(request.customerId())</span>
+<span class="nc" id="L52">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Customer not found: &quot; + request.customerId()));</span>
+
+<span class="nc" id="L54">        String idempotencyKey = request.idempotencyKey();</span>
+<span class="nc bnc" id="L55" title="All 4 branches missed.">        if (idempotencyKey == null || idempotencyKey.isBlank()) {</span>
+<span class="nc" id="L56">            idempotencyKey = &quot;JOB-&quot; + UUID.randomUUID();</span>
+        }
+
+<span class="nc" id="L59">        var existing = jobRepository.findByIdempotencyKey(idempotencyKey);</span>
+<span class="nc bnc" id="L60" title="All 2 branches missed.">        if (existing.isPresent()) {</span>
+<span class="nc" id="L61">            log.info(&quot;Idempotent request: returning existing job id={}&quot;, existing.get().getId());</span>
+<span class="nc" id="L62">            return CommunicationJobResponse.fromEntity(existing.get());</span>
+        }
+
+<span class="nc" id="L65">        CommunicationJob job = new CommunicationJob();</span>
+<span class="nc" id="L66">        job.setCustomerId(customer.getId());</span>
+<span class="nc" id="L67">        job.setCampaignId(request.campaignId());</span>
+<span class="nc" id="L68">        job.setChannel(request.channel());</span>
+<span class="nc" id="L69">        job.setIdempotencyKey(idempotencyKey);</span>
+<span class="nc bnc" id="L70" title="All 4 branches missed.">        job.setMaxAttempts(request.maxAttempts() != null &amp;&amp; request.maxAttempts() &gt; 0 ? request.maxAttempts() : 3);</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">        job.setScheduledAt(request.scheduledAt() != null ? request.scheduledAt() : OffsetDateTime.now());</span>
+
+        // Check contact suppression rule before queueing
+<span class="nc bnc" id="L74" title="All 2 branches missed.">        String contact = request.channel() == CommunicationChannel.EMAIL ? customer.getEmail() : customer.getPhoneNumber();</span>
+<span class="nc" id="L75">        boolean isSuppressed = false;</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">        if (contact != null) {</span>
+<span class="nc" id="L77">            isSuppressed = suppressionRepository</span>
+<span class="nc" id="L78">                    .findActiveSuppressionForContact(contact, request.channel().name(), OffsetDateTime.now())</span>
+<span class="nc" id="L79">                    .isPresent();</span>
+        }
+
+<span class="nc bnc" id="L82" title="All 2 branches missed.">        if (isSuppressed) {</span>
+<span class="nc" id="L83">            job.setStatus(JobStatus.SUPPRESSED);</span>
+<span class="nc" id="L84">            job.setLastError(&quot;Contact is in suppression list for channel &quot; + request.channel());</span>
+<span class="nc" id="L85">            log.warn(&quot;Customer {} contact is suppressed for channel {}&quot;, customer.getId(), request.channel());</span>
+        } else {
+<span class="nc" id="L87">            job.setStatus(JobStatus.PENDING);</span>
+        }
+
+<span class="nc" id="L90">        CommunicationJob saved = jobRepository.save(job);</span>
+
+<span class="nc" id="L92">        Map&lt;String, Object&gt; payload = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L93">        payload.put(&quot;jobId&quot;, saved.getId().toString());</span>
+<span class="nc" id="L94">        payload.put(&quot;customerId&quot;, saved.getCustomerId().toString());</span>
+<span class="nc" id="L95">        payload.put(&quot;channel&quot;, saved.getChannel().name());</span>
+<span class="nc" id="L96">        payload.put(&quot;status&quot;, saved.getStatus().name());</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">        if (saved.getCampaignId() != null) {</span>
+<span class="nc" id="L98">            payload.put(&quot;campaignId&quot;, saved.getCampaignId().toString());</span>
+        }
+
+<span class="nc" id="L101">        outboxService.publishEvent(&quot;CommunicationJob&quot;, saved.getId().toString(), &quot;COMMUNICATION_JOB_CREATED&quot;, payload);</span>
+<span class="nc" id="L102">        log.info(&quot;Communication job created id={} status={}&quot;, saved.getId(), saved.getStatus());</span>
+<span class="nc" id="L103">        return CommunicationJobResponse.fromEntity(saved);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public CommunicationJobResponse getJob(UUID id) {
+<span class="nc" id="L108">        CommunicationJob job = jobRepository.findById(id)</span>
+<span class="nc" id="L109">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Job not found: &quot; + id));</span>
+<span class="nc" id="L110">        return CommunicationJobResponse.fromEntity(job);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;CommunicationAttemptResponse&gt; getJobAttempts(UUID jobId) {
+<span class="nc" id="L115">        return attemptRepository.findByJobIdOrderByAttemptNumberDesc(jobId).stream()</span>
+<span class="nc" id="L116">                .map(CommunicationAttemptResponse::fromEntity)</span>
+<span class="nc" id="L117">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse&lt;CommunicationJobResponse&gt; listJobs(
+            JobStatus status, CommunicationChannel channel, UUID customerId, UUID campaignId, Pageable pageable) {
+<span class="nc" id="L123">        Page&lt;CommunicationJob&gt; page = jobRepository.findWithFilters(status, channel, customerId, campaignId, pageable);</span>
+<span class="nc" id="L124">        return PageResponse.from(page.map(CommunicationJobResponse::fromEntity));</span>
+    }
+
+    @Transactional
+    public CommunicationJobResponse dispatchJob(UUID jobId) {
+<span class="fc" id="L129">        CommunicationJob job = jobRepository.findById(jobId)</span>
+<span class="pc" id="L130">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Job not found: &quot; + jobId));</span>
+
+<span class="pc bpc" id="L132" title="1 of 2 branches missed.">        if (job.isTerminal()) {</span>
+<span class="nc" id="L133">            throw new ConflictException(&quot;Job is already in terminal state: &quot; + job.getStatus());</span>
+        }
+
+<span class="fc" id="L136">        Customer customer = customerRepository.findById(job.getCustomerId())</span>
+<span class="pc" id="L137">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Customer not found: &quot; + job.getCustomerId()));</span>
+
+<span class="fc" id="L139">        job.setStatus(JobStatus.IN_PROGRESS);</span>
+<span class="fc" id="L140">        job.setAttemptCount(job.getAttemptCount() + 1);</span>
+<span class="fc" id="L141">        jobRepository.save(job);</span>
+
+<span class="fc" id="L143">        int currentAttemptNumber = job.getAttemptCount();</span>
+<span class="pc bpc" id="L144" title="1 of 2 branches missed.">        String providerName = job.getChannel() == CommunicationChannel.VOICE ? &quot;SIMULATED_VOICE&quot; : &quot;SIMULATED_SMS&quot;;</span>
+<span class="fc" id="L145">        CommunicationAttempt attempt = new CommunicationAttempt(job.getId(), providerName, currentAttemptNumber);</span>
+
+<span class="pc bpc" id="L147" title="1 of 2 branches missed.">        if (job.getChannel() == CommunicationChannel.VOICE) {</span>
+<span class="fc" id="L148">            VoiceCallRequest callReq = new VoiceCallRequest(</span>
+<span class="fc" id="L149">                    customer.getPhoneNumber(),</span>
+<span class="fc" id="L150">                    customer.getPreferredLanguage(),</span>
+                    &quot;Dear customer, reminder for your bank account update.&quot;,
+<span class="fc" id="L152">                    job.getIdempotencyKey() + &quot;-&quot; + currentAttemptNumber,</span>
+<span class="fc" id="L153">                    customer.getId().toString()</span>
+            );
+<span class="fc" id="L155">            VoiceProviderResult res = voiceProvider.initiateCall(callReq);</span>
+<span class="fc" id="L156">            attempt.setProviderReference(res.providerReference());</span>
+
+<span class="fc bfc" id="L158" title="All 3 branches covered.">            switch (res.status()) {</span>
+                case ACCEPTED -&gt; {
+<span class="fc" id="L160">                    attempt.setStatus(AttemptStatus.DELIVERED);</span>
+<span class="fc" id="L161">                    attempt.setCompletedAt(OffsetDateTime.now());</span>
+<span class="fc" id="L162">                    job.setStatus(JobStatus.COMPLETED);</span>
+<span class="fc" id="L163">                    recordOutbox(job, &quot;COMMUNICATION_JOB_COMPLETED&quot;);</span>
+<span class="fc" id="L164">                }</span>
+                case TIMEOUT -&gt; {
+<span class="fc" id="L166">                    attempt.setStatus(AttemptStatus.TIMEOUT);</span>
+<span class="fc" id="L167">                    attempt.setFailureReason(&quot;Provider timeout&quot;);</span>
+<span class="fc" id="L168">                    job.setStatus(JobStatus.UNCERTAIN);</span>
+<span class="fc" id="L169">                    job.setLastError(&quot;Provider timed out&quot;);</span>
+<span class="fc" id="L170">                }</span>
+                default -&gt; {
+<span class="fc" id="L172">                    attempt.setStatus(AttemptStatus.FAILED);</span>
+<span class="fc" id="L173">                    attempt.setFailureCode(res.failureCode());</span>
+<span class="fc" id="L174">                    attempt.setFailureReason(res.failureReason());</span>
+<span class="fc" id="L175">                    attempt.setCompletedAt(OffsetDateTime.now());</span>
+<span class="fc" id="L176">                    handleFailure(job, res.failureReason());</span>
+                }
+            }
+<span class="fc" id="L179">        } else {</span>
+<span class="nc" id="L180">            SmsRequest smsReq = new SmsRequest(</span>
+<span class="nc" id="L181">                    customer.getPhoneNumber(),</span>
+                    &quot;Dear customer, urgent payment reminder for your bank account.&quot;,
+                    &quot;TEMPLATE_REMINDER&quot;,
+<span class="nc" id="L184">                    job.getIdempotencyKey() + &quot;-&quot; + currentAttemptNumber,</span>
+<span class="nc" id="L185">                    customer.getId().toString()</span>
+            );
+<span class="nc" id="L187">            SmsProviderResult res = smsProvider.sendSms(smsReq);</span>
+<span class="nc" id="L188">            attempt.setProviderReference(res.providerReference());</span>
+
+<span class="nc bnc" id="L190" title="All 3 branches missed.">            switch (res.status()) {</span>
+                case ACCEPTED -&gt; {
+<span class="nc" id="L192">                    attempt.setStatus(AttemptStatus.DELIVERED);</span>
+<span class="nc" id="L193">                    attempt.setCompletedAt(OffsetDateTime.now());</span>
+<span class="nc" id="L194">                    job.setStatus(JobStatus.COMPLETED);</span>
+<span class="nc" id="L195">                    recordOutbox(job, &quot;COMMUNICATION_JOB_COMPLETED&quot;);</span>
+<span class="nc" id="L196">                }</span>
+                case TIMEOUT -&gt; {
+<span class="nc" id="L198">                    attempt.setStatus(AttemptStatus.TIMEOUT);</span>
+<span class="nc" id="L199">                    attempt.setFailureReason(&quot;Provider timeout&quot;);</span>
+<span class="nc" id="L200">                    job.setStatus(JobStatus.UNCERTAIN);</span>
+<span class="nc" id="L201">                    job.setLastError(&quot;Provider timed out&quot;);</span>
+<span class="nc" id="L202">                }</span>
+                default -&gt; {
+<span class="nc" id="L204">                    attempt.setStatus(AttemptStatus.FAILED);</span>
+<span class="nc" id="L205">                    attempt.setFailureCode(res.failureCode());</span>
+<span class="nc" id="L206">                    attempt.setFailureReason(res.failureReason());</span>
+<span class="nc" id="L207">                    attempt.setCompletedAt(OffsetDateTime.now());</span>
+<span class="nc" id="L208">                    handleFailure(job, res.failureReason());</span>
+                }
+            }
+        }
+
+<span class="fc" id="L213">        attemptRepository.save(attempt);</span>
+<span class="fc" id="L214">        CommunicationJob saved = jobRepository.save(job);</span>
+<span class="fc" id="L215">        return CommunicationJobResponse.fromEntity(saved);</span>
+    }
+
+    @Transactional
+    public void processWebhookCallback(WebhookCallbackRequest request) {
+        // Replay attack protection: verify nonce
+<span class="pc bpc" id="L221" title="1 of 2 branches missed.">        if (webhookNonceRepository.existsById(request.nonce())) {</span>
+<span class="fc" id="L222">            log.warn(&quot;Duplicate webhook callback detected for nonce: {}&quot;, request.nonce());</span>
+<span class="fc" id="L223">            throw new ConflictException(&quot;Duplicate webhook nonce: replay detected&quot;);</span>
+        }
+
+<span class="nc" id="L226">        WebhookNonce nonce = new WebhookNonce(request.nonce(), request.provider(), OffsetDateTime.now().plusDays(1));</span>
+<span class="nc" id="L227">        webhookNonceRepository.save(nonce);</span>
+
+<span class="nc" id="L229">        var attemptOpt = attemptRepository.findByProviderReference(request.providerReference());</span>
+<span class="nc bnc" id="L230" title="All 2 branches missed.">        if (attemptOpt.isEmpty()) {</span>
+<span class="nc" id="L231">            log.warn(&quot;Received webhook for unknown provider reference: {}&quot;, request.providerReference());</span>
+<span class="nc" id="L232">            return;</span>
+        }
+
+<span class="nc" id="L235">        CommunicationAttempt attempt = attemptOpt.get();</span>
+<span class="nc" id="L236">        attempt.setCompletedAt(OffsetDateTime.now());</span>
+
+<span class="nc" id="L238">        CommunicationJob job = jobRepository.findById(attempt.getJobId()).orElse(null);</span>
+<span class="nc bnc" id="L239" title="All 2 branches missed.">        if (job == null) return;</span>
+
+<span class="nc bnc" id="L241" title="All 4 branches missed.">        if (&quot;DELIVERED&quot;.equalsIgnoreCase(request.status()) || &quot;SUCCESS&quot;.equalsIgnoreCase(request.status())) {</span>
+<span class="nc" id="L242">            attempt.setStatus(AttemptStatus.DELIVERED);</span>
+<span class="nc" id="L243">            job.setStatus(JobStatus.COMPLETED);</span>
+<span class="nc" id="L244">            recordOutbox(job, &quot;COMMUNICATION_JOB_COMPLETED&quot;);</span>
+        } else {
+<span class="nc" id="L246">            attempt.setStatus(AttemptStatus.FAILED);</span>
+<span class="nc" id="L247">            attempt.setFailureCode(request.failureCode());</span>
+<span class="nc" id="L248">            attempt.setFailureReason(request.failureReason());</span>
+<span class="nc" id="L249">            handleFailure(job, request.failureReason());</span>
+        }
+
+<span class="nc" id="L252">        attemptRepository.save(attempt);</span>
+<span class="nc" id="L253">        jobRepository.save(job);</span>
+<span class="nc" id="L254">        log.info(&quot;Webhook processed for attempt id={} new status={}&quot;, attempt.getId(), attempt.getStatus());</span>
+<span class="nc" id="L255">    }</span>
+
+    private void handleFailure(CommunicationJob job, String reason) {
+<span class="fc" id="L258">        job.setStatus(JobStatus.FAILED);</span>
+<span class="fc" id="L259">        job.setLastError(reason);</span>
+<span class="pc bpc" id="L260" title="1 of 2 branches missed.">        if (job.canRetry()) {</span>
+<span class="fc" id="L261">            job.setStatus(JobStatus.RETRYING);</span>
+<span class="fc" id="L262">            job.setNextRetryAt(job.calculateNextRetryAt());</span>
+<span class="fc" id="L263">            log.info(&quot;Job {} eligible for retry. Scheduled for {}&quot;, job.getId(), job.getNextRetryAt());</span>
+        } else {
+<span class="nc" id="L265">            recordOutbox(job, &quot;COMMUNICATION_JOB_FAILED&quot;);</span>
+        }
+<span class="fc" id="L267">    }</span>
+
+    private void recordOutbox(CommunicationJob job, String eventType) {
+<span class="fc" id="L270">        Map&lt;String, Object&gt; payload = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L271">        payload.put(&quot;jobId&quot;, job.getId().toString());</span>
+<span class="fc" id="L272">        payload.put(&quot;customerId&quot;, job.getCustomerId().toString());</span>
+<span class="fc" id="L273">        payload.put(&quot;channel&quot;, job.getChannel().name());</span>
+<span class="fc" id="L274">        payload.put(&quot;status&quot;, job.getStatus().name());</span>
+<span class="fc" id="L275">        outboxService.publishEvent(&quot;CommunicationJob&quot;, job.getId().toString(), eventType, payload);</span>
+<span class="fc" id="L276">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

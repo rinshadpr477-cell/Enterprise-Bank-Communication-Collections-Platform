@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CollectionCaseController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Enterprise Bank Communication and Collections Platform</a> &gt; <a href="index.source.html" class="el_package">com.ford.bank.collections.controller</a> &gt; <span class="el_source">CollectionCaseController.java</span></div><h1>CollectionCaseController.java</h1><pre class="source lang-java linenums">package com.ford.bank.collections.controller;
+
+import com.ford.bank.collections.domain.CollectionCaseStatus;
+import com.ford.bank.collections.dto.CollectionCaseResponse;
+import com.ford.bank.collections.dto.CreateCollectionCaseRequest;
+import com.ford.bank.collections.dto.UpdateCollectionCaseRequest;
+import com.ford.bank.collections.service.CollectionCaseService;
+import com.ford.bank.common.dto.PageResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
+
+@Tag(name = &quot;Collections&quot;, description = &quot;Collection case and account recovery endpoints&quot;)
+@RestController
+@RequestMapping(&quot;/api/v1/collections/cases&quot;)
+<span class="nc" id="L27">@RequiredArgsConstructor</span>
+public class CollectionCaseController {
+
+    private final CollectionCaseService collectionCaseService;
+
+    @Operation(summary = &quot;Create a new collection case&quot;)
+    @PostMapping
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER', 'COLLECTION_AGENT')&quot;)
+    public ResponseEntity&lt;CollectionCaseResponse&gt; createCase(@Valid @RequestBody CreateCollectionCaseRequest request) {
+<span class="nc" id="L36">        CollectionCaseResponse response = collectionCaseService.createCase(request);</span>
+        URI location = ServletUriComponentsBuilder
+<span class="nc" id="L38">                .fromCurrentRequest()</span>
+<span class="nc" id="L39">                .path(&quot;/{id}&quot;)</span>
+<span class="nc" id="L40">                .buildAndExpand(response.id())</span>
+<span class="nc" id="L41">                .toUri();</span>
+<span class="nc" id="L42">        return ResponseEntity.created(location).body(response);</span>
+    }
+
+    @Operation(summary = &quot;Get collection case by ID&quot;)
+    @GetMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER', 'COLLECTION_AGENT', 'AUDITOR')&quot;)
+    public ResponseEntity&lt;CollectionCaseResponse&gt; getCase(@PathVariable UUID id) {
+<span class="nc" id="L49">        return ResponseEntity.ok(collectionCaseService.getCase(id));</span>
+    }
+
+    @Operation(summary = &quot;Get collection cases for a specific customer&quot;)
+    @GetMapping(&quot;/customer/{customerId}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER', 'COLLECTION_AGENT', 'AUDITOR')&quot;)
+    public ResponseEntity&lt;List&lt;CollectionCaseResponse&gt;&gt; getCasesByCustomer(@PathVariable UUID customerId) {
+<span class="nc" id="L56">        return ResponseEntity.ok(collectionCaseService.getCasesByCustomer(customerId));</span>
+    }
+
+    @Operation(summary = &quot;List collection cases with filtering and pagination&quot;)
+    @GetMapping
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER', 'COLLECTION_AGENT', 'AUDITOR')&quot;)
+    public ResponseEntity&lt;PageResponse&lt;CollectionCaseResponse&gt;&gt; listCases(
+            @RequestParam(required = false) CollectionCaseStatus status,
+            @RequestParam(required = false) String agentId,
+            @RequestParam(defaultValue = &quot;0&quot;) int page,
+            @RequestParam(defaultValue = &quot;20&quot;) int size,
+            @RequestParam(defaultValue = &quot;createdAt&quot;) String sortBy,
+            @RequestParam(defaultValue = &quot;desc&quot;) String sortDir) {
+
+<span class="nc" id="L70">        size = Math.min(size, 100);</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">        Sort.Direction direction = &quot;asc&quot;.equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;</span>
+<span class="nc" id="L72">        PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));</span>
+
+<span class="nc" id="L74">        return ResponseEntity.ok(collectionCaseService.listCases(status, agentId, pageable));</span>
+    }
+
+    @Operation(summary = &quot;Update a collection case status or details&quot;)
+    @PatchMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER', 'COLLECTION_AGENT')&quot;)
+    public ResponseEntity&lt;CollectionCaseResponse&gt; updateCase(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateCollectionCaseRequest request) {
+<span class="nc" id="L83">        return ResponseEntity.ok(collectionCaseService.updateCase(id, request));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AgentTaskService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Enterprise Bank Communication and Collections Platform</a> &gt; <a href="index.source.html" class="el_package">com.ford.bank.collections.service</a> &gt; <span class="el_source">AgentTaskService.java</span></div><h1>AgentTaskService.java</h1><pre class="source lang-java linenums">package com.ford.bank.collections.service;
+
+import com.ford.bank.collections.domain.AgentTask;
+import com.ford.bank.collections.domain.AgentTaskStatus;
+import com.ford.bank.collections.domain.Priority;
+import com.ford.bank.collections.dto.AgentTaskResponse;
+import com.ford.bank.collections.dto.CreateAgentTaskRequest;
+import com.ford.bank.collections.dto.UpdateAgentTaskRequest;
+import com.ford.bank.collections.repository.AgentTaskRepository;
+import com.ford.bank.collections.repository.CollectionCaseRepository;
+import com.ford.bank.common.dto.PageResponse;
+import com.ford.bank.common.exception.ResourceNotFoundException;
+import com.ford.bank.kafka.outbox.OutboxService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+<span class="nc" id="L27">@Slf4j</span>
+@Service
+<span class="nc" id="L29">@RequiredArgsConstructor</span>
+public class AgentTaskService {
+
+    private final AgentTaskRepository agentTaskRepository;
+    private final CollectionCaseRepository collectionCaseRepository;
+    private final OutboxService outboxService;
+
+    @Transactional
+    public AgentTaskResponse createTask(CreateAgentTaskRequest request) {
+<span class="nc bnc" id="L38" title="All 2 branches missed.">        if (!collectionCaseRepository.existsById(request.collectionCaseId())) {</span>
+<span class="nc" id="L39">            throw new ResourceNotFoundException(&quot;CollectionCase not found: &quot; + request.collectionCaseId());</span>
+        }
+
+<span class="nc" id="L42">        AgentTask task = new AgentTask();</span>
+<span class="nc" id="L43">        task.setCollectionCaseId(request.collectionCaseId());</span>
+<span class="nc" id="L44">        task.setTaskType(request.taskType());</span>
+<span class="nc bnc" id="L45" title="All 2 branches missed.">        task.setStatus(request.assignedAgentId() != null ? AgentTaskStatus.ASSIGNED : AgentTaskStatus.OPEN);</span>
+<span class="nc" id="L46">        task.setAssignedAgentId(request.assignedAgentId());</span>
+<span class="nc bnc" id="L47" title="All 2 branches missed.">        task.setPriority(request.priority() != null ? request.priority() : Priority.MEDIUM);</span>
+<span class="nc" id="L48">        task.setDueAt(request.dueAt());</span>
+<span class="nc" id="L49">        task.setNotes(request.notes());</span>
+
+<span class="nc" id="L51">        AgentTask saved = agentTaskRepository.save(task);</span>
+
+<span class="nc" id="L53">        Map&lt;String, Object&gt; payload = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L54">        payload.put(&quot;taskId&quot;, saved.getId().toString());</span>
+<span class="nc" id="L55">        payload.put(&quot;collectionCaseId&quot;, saved.getCollectionCaseId().toString());</span>
+<span class="nc" id="L56">        payload.put(&quot;taskType&quot;, saved.getTaskType().name());</span>
+<span class="nc" id="L57">        payload.put(&quot;status&quot;, saved.getStatus().name());</span>
+
+<span class="nc" id="L59">        outboxService.publishEvent(&quot;AgentTask&quot;, saved.getId().toString(), &quot;AGENT_TASK_CREATED&quot;, payload);</span>
+<span class="nc" id="L60">        log.info(&quot;Created agent task id={} caseId={}&quot;, saved.getId(), saved.getCollectionCaseId());</span>
+<span class="nc" id="L61">        return AgentTaskResponse.fromEntity(saved);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public AgentTaskResponse getTask(UUID id) {
+<span class="nc" id="L66">        AgentTask task = agentTaskRepository.findById(id)</span>
+<span class="nc" id="L67">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;AgentTask not found: &quot; + id));</span>
+<span class="nc" id="L68">        return AgentTaskResponse.fromEntity(task);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;AgentTaskResponse&gt; getTasksByCase(UUID collectionCaseId) {
+<span class="nc" id="L73">        return agentTaskRepository.findByCollectionCaseId(collectionCaseId).stream()</span>
+<span class="nc" id="L74">                .map(AgentTaskResponse::fromEntity)</span>
+<span class="nc" id="L75">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse&lt;AgentTaskResponse&gt; listTasks(AgentTaskStatus status, String agentId, Pageable pageable) {
+        Page&lt;AgentTask&gt; page;
+<span class="nc bnc" id="L81" title="All 4 branches missed.">        if (agentId != null &amp;&amp; status != null) {</span>
+<span class="nc" id="L82">            page = agentTaskRepository.findByAssignedAgentIdAndStatusIn(agentId, List.of(status), pageable);</span>
+<span class="nc bnc" id="L83" title="All 2 branches missed.">        } else if (agentId != null) {</span>
+<span class="nc" id="L84">            page = agentTaskRepository.findByAssignedAgentId(agentId, pageable);</span>
+<span class="nc bnc" id="L85" title="All 2 branches missed.">        } else if (status != null) {</span>
+<span class="nc" id="L86">            page = agentTaskRepository.findByStatus(status, pageable);</span>
+        } else {
+<span class="nc" id="L88">            page = agentTaskRepository.findAll(pageable);</span>
+        }
+<span class="nc" id="L90">        return PageResponse.from(page.map(AgentTaskResponse::fromEntity));</span>
+    }
+
+    @Transactional
+    public AgentTaskResponse updateTask(UUID id, UpdateAgentTaskRequest request) {
+<span class="nc" id="L95">        AgentTask task = agentTaskRepository.findById(id)</span>
+<span class="nc" id="L96">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;AgentTask not found: &quot; + id));</span>
+
+<span class="nc" id="L98">        boolean statusChanged = false;</span>
+<span class="nc bnc" id="L99" title="All 4 branches missed.">        if (request.status() != null &amp;&amp; request.status() != task.getStatus()) {</span>
+<span class="nc" id="L100">            task.setStatus(request.status());</span>
+<span class="nc" id="L101">            statusChanged = true;</span>
+<span class="nc bnc" id="L102" title="All 4 branches missed.">            if (request.status() == AgentTaskStatus.COMPLETED || request.status() == AgentTaskStatus.CANCELLED) {</span>
+<span class="nc" id="L103">                task.setCompletedAt(OffsetDateTime.now());</span>
+            }
+        }
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        if (request.assignedAgentId() != null) {</span>
+<span class="nc" id="L107">            task.setAssignedAgentId(request.assignedAgentId());</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">            if (task.getStatus() == AgentTaskStatus.OPEN) {</span>
+<span class="nc" id="L109">                task.setStatus(AgentTaskStatus.ASSIGNED);</span>
+            }
+        }
+<span class="nc bnc" id="L112" title="All 2 branches missed.">        if (request.priority() != null) {</span>
+<span class="nc" id="L113">            task.setPriority(request.priority());</span>
+        }
+<span class="nc bnc" id="L115" title="All 2 branches missed.">        if (request.dueAt() != null) {</span>
+<span class="nc" id="L116">            task.setDueAt(request.dueAt());</span>
+        }
+<span class="nc bnc" id="L118" title="All 2 branches missed.">        if (request.notes() != null) {</span>
+<span class="nc" id="L119">            task.setNotes(request.notes());</span>
+        }
+
+<span class="nc" id="L122">        AgentTask updated = agentTaskRepository.save(task);</span>
+
+<span class="nc bnc" id="L124" title="All 2 branches missed.">        if (statusChanged) {</span>
+<span class="nc" id="L125">            Map&lt;String, Object&gt; payload = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L126">            payload.put(&quot;taskId&quot;, updated.getId().toString());</span>
+<span class="nc" id="L127">            payload.put(&quot;newStatus&quot;, updated.getStatus().name());</span>
+<span class="nc" id="L128">            outboxService.publishEvent(&quot;AgentTask&quot;, updated.getId().toString(), &quot;AGENT_TASK_UPDATED&quot;, payload);</span>
+        }
+
+<span class="nc" id="L131">        return AgentTaskResponse.fromEntity(updated);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

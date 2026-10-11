@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VoiceProviderResult.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Enterprise Bank Communication and Collections Platform</a> &gt; <a href="index.source.html" class="el_package">com.ford.bank.provider.voice</a> &gt; <span class="el_source">VoiceProviderResult.java</span></div><h1>VoiceProviderResult.java</h1><pre class="source lang-java linenums">package com.ford.bank.provider.voice;
+
+<span class="fc" id="L3">public record VoiceProviderResult(</span>
+        ResultStatus status,
+        String providerReference,
+        String failureCode,
+        String failureReason,
+        String rawResponse
+) {
+<span class="fc" id="L10">    public enum ResultStatus {</span>
+<span class="fc" id="L11">        ACCEPTED,    // Call accepted by provider; awaiting delivery callback</span>
+<span class="fc" id="L12">        FAILED,      // Provider definitively rejected the call</span>
+<span class="fc" id="L13">        TIMEOUT,     // No response within timeout; outcome unknown - treat as UNCERTAIN</span>
+<span class="fc" id="L14">        DUPLICATE    // Provider recognized this as a duplicate (idempotent retry)</span>
+    }
+
+    public static VoiceProviderResult accepted(String ref) {
+<span class="fc" id="L18">        return new VoiceProviderResult(ResultStatus.ACCEPTED, ref, null, null, null);</span>
+    }
+
+    public static VoiceProviderResult failed(String code, String reason) {
+<span class="fc" id="L22">        return new VoiceProviderResult(ResultStatus.FAILED, null, code, reason, null);</span>
+    }
+
+    public static VoiceProviderResult timeout() {
+<span class="fc" id="L26">        return new VoiceProviderResult(ResultStatus.TIMEOUT, null, &quot;TIMEOUT&quot;, &quot;No response within timeout&quot;, null);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
