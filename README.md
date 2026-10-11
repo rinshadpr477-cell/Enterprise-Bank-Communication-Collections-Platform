@@ -11,7 +11,7 @@ A production-grade, event-driven banking communication and recovery platform des
 
 ---
 
-## 🏛 Key Engineering Highlights
+##  Key Engineering Highlights
 
 - **Transactional Outbox Pattern**: Solves dual-write hazards across relational persistence and Apache Kafka. Events are committed atomically with business entities and dispatched by an autonomous lock-free publisher (`FOR UPDATE SKIP LOCKED`).
 - **Consumer-Side Idempotency**: Deduplicates event deliveries using composite tracking keys in `processed_events`, ensuring exactly-once processing semantics across at-least-once message pipelines.
@@ -100,7 +100,7 @@ Jacoco test coverage reports are generated at:
 
 ---
 
-## 📖 Detailed Documentation
+##  Detailed Documentation
 
 - [Architecture Blueprint](file:///docs/ARCHITECTURE.md)
 - [REST API Specifications](file:///docs/API_DOCUMENTATION.md)
