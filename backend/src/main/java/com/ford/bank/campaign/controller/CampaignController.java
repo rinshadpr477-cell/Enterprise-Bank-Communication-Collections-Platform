@@ -23,6 +23,11 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.ford.bank.campaign.dto.CsvUploadResult;
+import com.ford.bank.campaign.service.CsvIngestionService;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
+
 @Tag(name = "Campaigns", description = "Campaign management and lifecycle control")
 @RestController
 @RequestMapping("/api/v1/campaigns")
@@ -30,6 +35,7 @@ import java.util.UUID;
 public class CampaignController {
 
     private final CampaignService campaignService;
+    private final CsvIngestionService csvIngestionService;
 
     @Operation(summary = "Create a new campaign")
     @PostMapping
@@ -111,6 +117,24 @@ public class CampaignController {
         }
         campaignService.addTargetsBatch(id, customerIds);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Upload and process delinquency CSV with prompt template")
+    @PostMapping(value = "/upload-csv", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN', 'CAMPAIGN_MANAGER')")
+    public ResponseEntity<CsvUploadResult> uploadDelinquencyCsv(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "promptTemplate", required = false) String promptTemplate,
+            @RequestParam(value = "channelPreference", required = false, defaultValue = "AUTO") String channelPreference,
+            @RequestParam(value = "toneStrategy", required = false, defaultValue = "POLITE_REMINDER") String toneStrategy,
+            @RequestParam(value = "campaignName", required = false) String campaignName,
+            @RequestParam(value = "previewOnly", required = false, defaultValue = "false") boolean previewOnly,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        CsvUploadResult result = csvIngestionService.processDelinquencyCsv(
+                file, promptTemplate, channelPreference, toneStrategy, campaignName, previewOnly, extractActorId(jwt)
+        );
+        return ResponseEntity.ok(result);
     }
 
     private String extractActorId(Jwt jwt) {

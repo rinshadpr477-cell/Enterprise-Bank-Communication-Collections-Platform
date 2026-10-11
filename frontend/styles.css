@@ -904,6 +904,65 @@ body {
 .toast.error { border-left-color: var(--danger); }
 .toast.info { border-left-color: var(--info); }
 
+/* CSV & Prompt Studio Layout */
+.studio-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 24px;
+}
+
+@media (max-width: 1180px) {
+  .studio-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.studio-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.dropzone {
+  border: 2px dashed #cbd5e1;
+  border-radius: var(--radius-md);
+  padding: 30px 20px;
+  text-align: center;
+  background-color: #fafbfc;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.dropzone:hover, .dropzone.dragover {
+  border-color: var(--accent-blue);
+  background-color: #f0f7ff;
+}
+
+.chip-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.var-chip {
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--primary-navy);
+  cursor: pointer;
+  font-family: monospace;
+  transition: var(--transition);
+}
+
+.var-chip:hover {
+  background-color: #e2e8f0;
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .sidebar {

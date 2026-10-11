@@ -16,6 +16,8 @@ public interface CollectionCaseRepository extends JpaRepository<CollectionCase, 
 
     List<CollectionCase> findByCustomerId(UUID customerId);
 
+    java.util.Optional<CollectionCase> findByExternalAccountReference(String externalAccountReference);
+
     Page<CollectionCase> findByStatus(CollectionCaseStatus status, Pageable pageable);
 
     Page<CollectionCase> findByAssignedAgentId(String assignedAgentId, Pageable pageable);
