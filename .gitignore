@@ -1,0 +1,27 @@
+# Maven & Java
+target/
+backend/target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Logs & Runtime
+*.log
+logs/
+
+# IDE & Editors
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+dist/
