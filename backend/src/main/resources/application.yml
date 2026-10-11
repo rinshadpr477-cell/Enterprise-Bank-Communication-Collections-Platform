@@ -82,6 +82,9 @@ management:
     health:
       show-details: when-authorized
       show-components: when-authorized
+      probes:
+        enabled: true
+      validate-group-membership: false
       group:
         liveness:
           include: livenessState,diskSpace
