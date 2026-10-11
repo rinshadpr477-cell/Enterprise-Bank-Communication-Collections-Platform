@@ -105,3 +105,6 @@ Jacoco test coverage reports are generated at:
 - [Architecture Blueprint](file:///docs/ARCHITECTURE.md)
 - [REST API Specifications](file:///docs/API_DOCUMENTATION.md)
 - [Engineering Runbook](file:///docs/RUNBOOK.md)
+
+  <img width="1812" height="1057" alt="image" src="https://github.com/user-attachments/assets/77db4fe4-9fba-45f6-9938-87183c9ccf37" />
+
