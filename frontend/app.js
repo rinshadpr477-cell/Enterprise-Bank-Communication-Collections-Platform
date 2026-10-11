@@ -3,7 +3,7 @@
  * Frontend Orchestration Script
  */
 
-const API_BASE = 'http://localhost:8080/api/v1';
+const API_BASE = 'http://localhost:8088/api/v1';
 
 // Initial Mock Seed Data (used when backend is offline or for immediate preview)
 const state = {

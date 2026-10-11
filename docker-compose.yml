@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: bankuser
       POSTGRES_PASSWORD: bankpass
     ports:
-      - "5432:5432"
+      - "5435:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -64,7 +64,7 @@ services:
       SECURITY_DEV_MODE: "true"
       SERVER_PORT: 8080
     ports:
-      - "8080:8080"
+      - "8088:8080"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 15s
