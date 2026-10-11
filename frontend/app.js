@@ -190,12 +190,12 @@ function renderCommunicationJobs() {
     <tr>
       <td><code>${j.key}</code></td>
       <td><strong>${j.customerName}</strong></td>
-      <td><span class="status-tag tag-info">${j.channel === 'VOICE' ? '📞 Voice Call' : '💬 SMS'}</span></td>
+      <td><span class="status-tag tag-info">${j.channel === 'VOICE' ? 'Voice Call' : 'SMS'}</span></td>
       <td><span class="status-tag ${getTagClass(j.status)}">${j.status}</span></td>
       <td>${j.attempts} / 3</td>
       <td>${j.nextRetry}</td>
       <td>
-        ${j.status !== 'COMPLETED' ? `<button class="btn btn-primary btn-sm" onclick="dispatchJob('${j.id}')">⚡ Dispatch</button>` : `<span style="color: var(--success); font-size: 0.8rem;">✓ Delivered</span>`}
+        ${j.status !== 'COMPLETED' ? `<button class="btn btn-primary btn-sm" onclick="dispatchJob('${j.id}')">Dispatch</button>` : `<span style="color: var(--success); font-weight: 600; font-size: 0.8rem;">Delivered</span>`}
       </td>
     </tr>
   `).join('');
@@ -207,7 +207,7 @@ function renderCollections() {
     casesTable.innerHTML = state.collectionCases.map(c => `
       <tr>
         <td><code>${c.ref}</code></td>
-        <td><strong>₹ ${c.amount}</strong></td>
+        <td><strong>INR ${c.amount}</strong></td>
         <td>${c.dueDate}</td>
         <td><span class="status-tag ${c.priority === 'CRITICAL' ? 'tag-danger' : 'tag-warning'}">${c.priority}</span></td>
         <td><span class="status-tag ${getTagClass(c.status)}">${c.status}</span></td>
